@@ -146,6 +146,7 @@ absl::StatusOr<bool> StreamAttributeAnnotator::Run(
       if (!instr_gpu_config.ok()) {
         continue;
       }
+<<<<<<< HEAD
       // For fusion instruction, only annotate
       // when the root of fusion is a single instruction
       // running on non-default stream.
@@ -160,6 +161,26 @@ absl::StatusOr<bool> StreamAttributeAnnotator::Run(
                                 instr, channel_id, instr_gpu_config.value()));
         changed |= comp_result;
         continue;
+=======
+      if (!copy_start_done_) {
+        // For fusion instruction, only annotate
+        // when the root of fusion is a single instruction
+        // running on non-default stream.
+        if (instr->opcode() == HloOpcode::kFusion) {
+          TF_ASSIGN_OR_RETURN(bool comp_result,
+                              AnnotateStreamAttributesForInstruction(
+                                  instr, instr_gpu_config.value()));
+          changed |= comp_result;
+        }
+      } else {
+        if (instr->opcode() == HloOpcode::kCopyStart) {
+          GpuBackendConfig gpu_backend_config;
+          gpu_backend_config.set_operation_queue_id(channel_id);
+          VLOG(3) << "Add copy-start's backend config: " << channel_id;
+          TF_RETURN_IF_ERROR(instr->set_backend_config(gpu_backend_config));
+          changed = true;
+	    }
+>>>>>>> ff99c161a6 (Add annotation of stream id for copy-start and its use of copy-done instruction)
       }
 
       TF_ASSIGN_OR_RETURN(
