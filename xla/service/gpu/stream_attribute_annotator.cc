@@ -41,7 +41,9 @@ namespace {
 bool IsOnlyRootNonDefaultStream(HloComputation* computation) {
   HloInstruction* root = computation->root_instruction();
   auto root_gpu_config = root->backend_config<GpuBackendConfig>();
-  if (!root_gpu_config.ok() || root->opcode() == HloOpcode::kTuple) {
+  // Disable the annotation if its root is copy-start
+  if (!root_gpu_config.ok() || root->opcode() == HloOpcode::kTuple ||
+      root->opcode() == HloOpcode::kCopyStart) {
     return false;
   }
   int64_t root_stream_id = root_gpu_config->operation_queue_id();
@@ -89,7 +91,6 @@ absl::StatusOr<bool> AnnotateStreamAttributesForInstruction(
 }
 
 absl::StatusOr<bool> AnnotateStreamAttributesForCopyStart(
-<<<<<<< HEAD
     HloInstruction* instr, int64_t channel_id,
     GpuBackendConfig& instr_gpu_config) {
   // Do nothing if copy-start has already been annotated
@@ -100,13 +101,6 @@ absl::StatusOr<bool> AnnotateStreamAttributesForCopyStart(
   instr_gpu_config.set_operation_queue_id(channel_id);
   TF_RETURN_IF_ERROR(instr->set_backend_config(instr_gpu_config));
   VLOG(3) << "Add copy-start's backend config: " << channel_id;
-=======
-    HloInstruction* instr, int64_t channel_id) {
-  GpuBackendConfig gpu_backend_config;
-  gpu_backend_config.set_operation_queue_id(channel_id);
-  VLOG(3) << "Add copy-start's backend config: " << channel_id;
-  TF_RETURN_IF_ERROR(instr->set_backend_config(gpu_backend_config));
->>>>>>> db5ed79f0e (Use a function to annotate copy-start and add description)
   return true;
 }
 
@@ -154,8 +148,6 @@ absl::StatusOr<bool> StreamAttributeAnnotator::Run(
       if (!instr_gpu_config.ok()) {
         continue;
       }
-<<<<<<< HEAD
-<<<<<<< HEAD
       // For fusion instruction, only annotate
       // when the root of fusion is a single instruction
       // running on non-default stream.
@@ -170,38 +162,6 @@ absl::StatusOr<bool> StreamAttributeAnnotator::Run(
                                 instr, channel_id, instr_gpu_config.value()));
         changed |= comp_result;
         continue;
-=======
-      if (!copy_start_done_) {
-=======
-      if (!copy_start_) {
->>>>>>> db5ed79f0e (Use a function to annotate copy-start and add description)
-        // For fusion instruction, only annotate
-        // when the root of fusion is a single instruction
-        // running on non-default stream.
-        if (instr->opcode() == HloOpcode::kFusion) {
-          TF_ASSIGN_OR_RETURN(bool comp_result,
-                              AnnotateStreamAttributesForInstruction(
-                                  instr, instr_gpu_config.value()));
-          changed |= comp_result;
-        }
-      } else {
-        if (instr->opcode() == HloOpcode::kCopyStart) {
-<<<<<<< HEAD
-          GpuBackendConfig gpu_backend_config;
-          gpu_backend_config.set_operation_queue_id(channel_id);
-          VLOG(3) << "Add copy-start's backend config: " << channel_id;
-          TF_RETURN_IF_ERROR(instr->set_backend_config(gpu_backend_config));
-          changed = true;
-	    }
->>>>>>> ff99c161a6 (Add annotation of stream id for copy-start and its use of copy-done instruction)
-=======
-          TF_ASSIGN_OR_RETURN(bool comp_result,
-                              AnnotateStreamAttributesForCopyStart(
-                                  instr, channel_id));
-          changed |= comp_result;
-          continue;
-	}
->>>>>>> db5ed79f0e (Use a function to annotate copy-start and add description)
       }
 
       TF_ASSIGN_OR_RETURN(
