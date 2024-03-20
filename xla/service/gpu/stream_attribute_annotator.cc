@@ -41,9 +41,7 @@ namespace {
 bool IsOnlyRootNonDefaultStream(HloComputation* computation) {
   HloInstruction* root = computation->root_instruction();
   auto root_gpu_config = root->backend_config<GpuBackendConfig>();
-  // Disable the annotation if its root is copy-start
-  if (!root_gpu_config.ok() || root->opcode() == HloOpcode::kTuple ||
-      root->opcode() == HloOpcode::kCopyStart) {
+  if (!root_gpu_config.ok() || root->opcode() == HloOpcode::kTuple) {
     return false;
   }
   int64_t root_stream_id = root_gpu_config->operation_queue_id();
