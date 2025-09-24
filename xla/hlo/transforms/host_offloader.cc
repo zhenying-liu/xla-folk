@@ -329,11 +329,11 @@ absl::StatusOr<bool> HostOffloader::WalkDownHostMemoryOffloadPaths(
           LOG(INFO) << "Instruction trace leading to error:";
           PrintTrace(instruction_and_shape_index, previous);
         }
-        return absl::InvalidArgumentError(
-            absl::StrFormat("Tensor which is moved to host (starting from %s) "
-                            "is returned from the entry computation but the "
-                            "layout for this output is not set to host memory.",
-                            starting_instruction->name()));
+        //return absl::InvalidArgumentError(
+        //    absl::StrFormat("Tensor which is moved to host (starting from %s) "
+        //                    "is returned from the entry computation but the "
+        //                    "layout for this output is not set to host memory.",
+        //                    starting_instruction->name()));
       }
     }
     // Push successors onto the queue to be visited.

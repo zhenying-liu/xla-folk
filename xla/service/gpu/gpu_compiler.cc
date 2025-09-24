@@ -222,6 +222,8 @@ limitations under the License.
 #include "xla/service/gpu/transforms/dynamic_slice_fusion_rewriter.h"
 #include "xla/service/gpu/transforms/explicit_collectives_group_async_wrapper.h"
 #include "xla/service/gpu/transforms/explicit_stream_annotation_async_wrapper.h"
+#include "xla/service/gpu/transforms/forced_fusion.h"
+#include "xla/service/gpu/transforms/fused_out_spaces.h"
 #include "xla/service/gpu/transforms/fusion_wrapper.h"
 #include "xla/service/gpu/transforms/gemm_broadcast_folding_rewriter.h"
 #include "xla/service/gpu/transforms/gemm_fusion.h"
@@ -1849,6 +1851,7 @@ absl::Status GpuCompiler::OptimizeHloPostLayoutAssignment(
   pipeline.AddPass<HloVerifier>(std::move(verifier_metadata));
 
   pipeline.AddPass<HostOffloader>(alias_info);
+  pipeline.AddPass<FusedOutSpaces>();
 
   TF_RETURN_IF_ERROR(AddConvAndGemmAutotuningPasses(
       &pipeline, gpu_version, options, hlo_module, autotune_config, thread_pool,
@@ -1997,6 +2000,14 @@ absl::StatusOr<std::unique_ptr<HloModule>> GpuCompiler::RunHloPasses(
 
   TF_RETURN_IF_ERROR(RunPreSchedulingCopyInsertion(*module, device_description,
                                                    alias_info.get()));
+
+  // pre-scheduling-copy-insertion reruns HorizontalFusion, which is a bit
+  // surprising. post-fusion needs to run afterwards, unless we come up with
+  // some mechanism to prevent horizontal fusion of forced fusions.
+  // TODO(jreiffers): Clean this up?
+  HloPassPipeline post_fusion("post-fusion");
+  post_fusion.AddPass<ForcedFusion>();
+  TF_RETURN_IF_ERROR(post_fusion.Run(module.get()).status());
 
   uint64_t end_usecs = tsl::Env::Default()->NowMicros();
 
